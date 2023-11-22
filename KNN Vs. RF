@@ -1,0 +1,197 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error,r2_score
+import matplotlib.pyplot as plt
+
+# Load the data
+data = pd.read_csv(r'C:\Users\Downloads\Paradip - Sheet1.csv', names=['months', 'height'])
+
+# Check for missing values
+missing_values = data.isnull().sum()
+print("Missing Values:\n", missing_values)
+
+# Handle missing values
+data.dropna(inplace=True)  # Drop rows with missing values
+
+# Interpolate missing values
+data['height'] = data['height'].interpolate(method='linear')  # You may uncomment this line if needed
+
+# Verify missing values have been handled
+missing_values_after = data.isnull().sum()
+print("\nMissing Values After Handling:\n", missing_values_after)
+
+# Feature engineering and selection (assuming you only use 'months' as input feature)
+X = data[['months']].values
+y = data['height'].values
+
+# Initialize StandardScaler
+scaler_X = StandardScaler()
+
+# Fit and transform X data
+X_scaled = scaler_X.fit_transform(X)
+
+# Hyperparameter tuning using GridSearchCV with Cross-Validation
+param_grid = {
+    'n_estimators': [100, 150, 200],
+    'max_depth': [None, 15, 30],
+    'min_samples_split': [2, 4, 8],
+    'min_samples_leaf': [1, 2, 4],
+    'ccp_alpha': [0.0, 0.05, 0.1, 0.2]
+}
+
+rf_model = RandomForestRegressor(random_state=42)
+grid_search = GridSearchCV(estimator=rf_model, param_grid=param_grid, cv=KFold(n_splits=5), scoring='neg_mean_squared_error')
+grid_search.fit(X_scaled, y)
+
+best_rf_model = grid_search.best_estimator_
+
+# Make predictions
+y_pred = best_rf_model.predict(X_scaled)
+
+# Calculate metrics
+mae = mean_absolute_error(y, y_pred)
+rmse = np.sqrt(mean_squared_error(y, y_pred))
+# Calculate R-squared score
+r2 = r2_score(y, y_pred)
+
+print("Best Random Forest - MAE:", mae)
+print("Best Random Forest - RMSE:", rmse)
+print("Best Random Forest - R-squared:", r2)
+
+# Visualize the results
+plt.figure(figsize=(10, 6))
+plt.scatter(X, y, label='Original Data')
+plt.scatter(X, y_pred, color='red', label='Predicted Data')
+plt.xlabel('Months')
+plt.ylabel('Height')
+plt.legend()
+plt.title('Original vs. Predicted Data (Best Random Forest Regressor)')
+plt.show()
+# Create a DataFrame from your data
+df = pd.DataFrame(data)
+
+# Convert height from millimeters to meters
+df['height_m'] = df['height'] / 1000.0
+
+# Convert the 'time' column to a string format
+df['time'] = df['months'].astype(str)
+
+# Define the start years for each decade
+decades = [(1970, 1979), (1979, 1989), (1989, 1999), (1999, 2009), (2009, 2020)]
+
+# Create separate figures for each decade
+for i, (start_year, end_year) in enumerate(decades):
+    mask = (df['time'] >= str(start_year)) & (df['time'] <= str(end_year))
+    df_decade = df[mask]
+
+    # Check if there is data for the decade before plotting
+    if not df_decade.empty:
+        # Calculate the mean of all non-missing values for the decade
+        mean_height_decade = df_decade['height_m'].mean()
+
+        # Subtract the mean from all non-missing values for the decade
+        df_decade['height_variation'] = df_decade['height_m'] - mean_height_decade
+
+        # Create a new figure for each decade
+        plt.figure(figsize=(12, 6))
+        plt.plot(df_decade.index, df_decade['height_variation'], color='blue', marker='o', linestyle='-',
+                 label=f'Height Variation ({start_year}s)')
+        plt.grid(True)
+
+        # Make the y=0 line bold and green
+        plt.axhline(0, color='green', linewidth=2, label='y=0')
+
+        # Set y-axis limits to ensure visibility
+        y_max = max(abs(df_decade['height_variation'])) + 0.1
+        plt.ylim(-y_max, y_max)
+
+        # Set x-axis ticks and labels to show only 10 years
+        plt.xticks(df_decade.index[::12], df_decade['time'].iloc[::12], rotation=45)
+
+        # Add labels and legend
+        plt.xlabel('Year')
+        plt.ylabel('Height Variation (meters)')
+        plt.title(f'Paradip- Sea Level Data for the Decade {start_year}-{end_year}')
+        plt.legend()
+
+        # Show the plot
+        plt.tight_layout()
+        plt.show()
+
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+
+# Load the data
+data = pd.read_csv(r'C:\Users\Downloads\Paradip - Sheet1.csv', names=['months', 'height'])
+
+# Check for missing values
+missing_values = data.isnull().sum()
+print("Missing Values:\n", missing_values)
+
+# Handle missing values
+data.dropna(inplace=True)  # Drop rows with missing values
+
+# Verify missing values have been handled
+missing_values_after = data.isnull().sum()
+print("\nMissing Values After Handling:\n", missing_values_after)
+
+# Feature engineering and selection (assuming you only use 'months' as input feature)
+X = data[['months']].values
+y = data['height'].values
+
+# Initialize StandardScaler
+scaler_X = StandardScaler()
+
+# Fit and transform X data
+X_scaled = scaler_X.fit_transform(X)
+
+# Hyperparameter tuning using GridSearchCV with Cross-Validation
+param_grid = {
+    'n_neighbors': [3, 5, 7],
+    'weights': ['uniform', 'distance']
+}
+
+knn_model = KNeighborsRegressor()
+grid_search = GridSearchCV(estimator=knn_model, param_grid=param_grid, cv=KFold(n_splits=5), scoring='neg_mean_squared_error')
+grid_search.fit(X_scaled, y)
+
+best_knn_model = grid_search.best_estimator_
+
+# Fill gaps using the best KNN model
+y_pred = best_knn_model.predict(X_scaled)
+
+# Calculate metrics
+mae = mean_absolute_error(y, y_pred)
+rmse = np.sqrt(mean_squared_error(y, y_pred))
+# Calculate R-squared score
+r2 = r2_score(y, y_pred)
+
+print("Best KNN - MAE:", mae)
+print("Best KNN - RMSE:", rmse)
+print("Best KNN - R-squared:", r2)
+
+# Visualize the results using line graphs
+plt.figure(figsize=(10, 6))
+plt.plot(X, y, label='Original Data', marker='o')
+plt.plot(X, y_pred, color='red', label='Predicted Data', marker='o')
+plt.xlabel('Months')
+plt.ylabel('Height')
+plt.legend()
+plt.title('Original vs. Predicted Data (Best KNN Regressor)')
+
+# Plot the filled gaps
+plt.plot(X_scaled, y_pred, color='blue', label='Filled Gaps', alpha=0.3, linestyle='dashed')
+
+plt.legend()
+plt.show()
+
+        
